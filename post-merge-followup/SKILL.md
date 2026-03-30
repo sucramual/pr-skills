@@ -75,7 +75,7 @@ For each confirmed item:
 
 ## 6. Create Linear tickets
 
-Unless the user specifies otherwise, assign tickets to the default assignee (configure your Linear user ID below) and set status to Todo (fetch the "Todo" state ID from the team's workflow states).
+Unless the user specifies otherwise, assign tickets to the default assignee from [config.json](config.json) and set status to Todo (fetch the "Todo" state ID from the team's workflow states). Read the `defaultAssigneeId` from config.json and use it as the assignee.
 
 For each confirmed follow-up:
 
@@ -89,7 +89,7 @@ curl -s -X POST https://api.linear.app/graphql \
       "input": {
         "teamId": "<TEAM_ID>",
         "projectId": "<PROJECT_ID>",
-        "assigneeId": "<YOUR_LINEAR_USER_ID>",
+        "assigneeId": "<ASSIGNEE_ID from config.json>",
         "title": "<TITLE>",
         "description": "<DESCRIPTION>\n\n### Source\n\nFollow-up from PR #<NUMBER>\nRaised by: @<author>\nOriginal ticket: <TICKET>"
       }

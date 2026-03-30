@@ -1,0 +1,12 @@
+{
+  "reviewers": {
+    "apps/frontend-*": "@your-org/frontend-team",
+    "apps/backend-*": "@your-org/backend-team"
+  },
+  "alwaysReview": ["r? @claude", "r? @codex"],
+  "assignees": {
+    "default": ["your-default-reviewer"],
+    "ai": ["your-default-reviewer", "your-ml-engineer"]
+  },
+  "aiPatterns": ["extractor", "llm", "evaluation", "ai-platform"]
+}

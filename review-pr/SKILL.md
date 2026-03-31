@@ -24,7 +24,7 @@ Store the PR number, repo owner/name, and branch.
 
 ### 2. Wait for and collect feedback
 
-**On round 1:** check if the PR already has review comments or bot comments. If it does, collect them immediately. If not, wait 2 minutes then poll every 15 seconds for up to 5 minutes total. If still zero after 5 minutes, report "No review feedback received on PR #N after 5 minutes" and stop.
+**On round 1:** check if the PR already has **both** inline review comments (pulls/comments endpoint) **and** issue-level bot comments (issues/comments endpoint). If both exist, collect immediately. Otherwise, wait 2 minutes then poll every 15 seconds for up to 5 minutes for both to appear. If after 5 minutes only one type exists, collect what's available. If still zero after 5 minutes, report "No review feedback received on PR #N after 5 minutes" and stop. **Do not short-circuit on issue-level comments alone** — bots like Copilot post inline comments several minutes after issue-level summaries from CodeRabbit/Claude.
 
 **On subsequent rounds:** wait 2 minutes for bots to re-review the push, then poll every 15 seconds for up to 5 minutes total for NEW comments (created after `PUSH_TIME`). If no new comments appear, skip to the final summary.
 
@@ -114,10 +114,17 @@ gh api repos/<owner>/<repo>/pulls/<pr>/comments/<comment_id>/replies \
 gh pr-review comments reply --thread-id <thread-id> --body "<disposition>" -R <owner/repo> <pr>
 ```
 
-Reply templates:
-- **Fixed**: `Fixed in <short-sha>.`
-- **Stale**: `Stale — the referenced code has already changed.`
-- **Won't fix**: `Won't fix — <brief reason>.`
+Reply templates (two-level classification for downstream automation):
+
+**Valid issues:**
+- **Fixed**: `✅ Valid — Fixed in <short-sha>.`
+- **TODO**: `✅ Valid — TODO: <brief description of follow-up work>.`
+
+**Invalid issues:**
+- **Stale**: `❌ Invalid — stale, the referenced code has already changed.`
+- **Won't fix**: `❌ Invalid — <brief reason>.`
+
+Use TODO when the issue is real but out of scope for this PR (needs a broader refactor, separate ticket, etc.). Downstream skills can scan for `✅ Valid — TODO` to collect follow-up items.
 
 When numbering items, use `1.`, `2.` — never `#1`, `#2` (GitHub auto-links `#N` to issues).
 
@@ -147,6 +154,6 @@ After completing all rounds (or fewer if no comments appeared), produce a summar
 | 7 | src/grault.ts | 8 | @reviewer | Unresolved | Needs decision on API design |
 ```
 
-Dispositions: **Fixed (round N)**, **Stale**, **Won't fix**, **Unresolved** (include reason).
+Dispositions: **Fixed (round N)**, **TODO**, **Stale**, **Won't fix**, **Unresolved** (include reason).
 
 If there are **Unresolved** items, present them for human decision. If feedback changed the implementation approach, update the PR description.

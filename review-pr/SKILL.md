@@ -24,43 +24,35 @@ Store the PR number, repo owner/name, and branch.
 
 ### 2. Wait for and collect feedback
 
-**On round 1:** check if the PR already has **both** inline review comments (pulls/comments endpoint) **and** issue-level bot comments (issues/comments endpoint). If both exist, collect immediately. Otherwise, wait 2 minutes then poll every 15 seconds for up to 5 minutes for both to appear. If after 5 minutes only one type exists, collect what's available. If still zero after 5 minutes, report "No review feedback received on PR #N after 5 minutes" and stop. **Do not short-circuit on issue-level comments alone** — bots like Copilot post inline comments several minutes after issue-level summaries from CodeRabbit/Claude.
-
-**On subsequent rounds:** wait 2 minutes for bots to re-review the push, then poll every 15 seconds for up to 5 minutes total for NEW comments (created after `PUSH_TIME`). If no new comments appear, skip to the final summary.
-
-Polling commands:
+Use the polling script — do NOT implement polling logic yourself:
 
 ```bash
 # Round 1 (all comments)
-gh api repos/<owner>/<repo>/pulls/<pr>/comments --jq 'length'
-gh api "repos/<owner>/<repo>/issues/<pr>/comments" \
-  --jq '[.[] | select(.user.login | test("claude|coderabbit|copilot"; "i"))] | length'
+bash scripts/poll-and-collect.sh <owner>/<repo> <pr-number>
 
-# Subsequent rounds (new comments only — filter by PUSH_TIME)
-gh api repos/<owner>/<repo>/pulls/<pr>/comments \
-  --jq '[.[] | select(.created_at > "<ISO_PUSH_TIME>")] | length'
-gh api "repos/<owner>/<repo>/issues/<pr>/comments?since=<ISO_PUSH_TIME>" \
-  --jq '[.[] | select(.user.login | test("claude|coderabbit|copilot"; "i"))] | length'
+# Subsequent rounds (only new comments since last push)
+bash scripts/poll-and-collect.sh <owner>/<repo> <pr-number> --since <ISO_PUSH_TIME>
 ```
 
-Once comments exist, gather from every source before touching code:
+The script path is relative to this skill's base directory. The script handles all timing (2 min minimum wait, 15s polling interval, 60s grace period after first activity, 5 min hard ceiling). It outputs a single JSON object:
+
+```json
+{
+  "inline": [{"id": 123, "path": "src/foo.ts", "line": 42, "body": "...", "user": "Copilot", "created_at": "..."}],
+  "reviews": [{"id": 456, "body": "...", "state": "CHANGES_REQUESTED", "user": "claude[bot]", "submitted_at": "..."}],
+  "bot_comments": [{"id": 789, "body": "...", "user": "claude[bot]", "created_at": "..."}]
+}
+```
+
+If all three arrays are empty after the script completes, report "No review feedback received on PR #N after 5 minutes" and stop. On subsequent rounds, if empty, skip to the final summary.
+
+Also collect CI check failures:
 
 ```bash
-# All inline review comments (human + bot)
-gh api repos/<owner>/<repo>/pulls/<pr>/comments \
-  --jq '.[] | {id, path, line, body, user: .user.login, created_at}'
-
-# Issue-level bot comments (Claude bot summary, CodeRabbit summary, etc.)
-gh api repos/<owner>/<repo>/issues/<pr>/comments \
-  --jq '.[] | select(.user.login | test("claude|coderabbit|copilot"; "i")) | {id, body, user: .user.login, created_at}'
-
-# CI check failures
 gh pr checks <pr-number>
 # For each failed check:
 gh run view <run-id> --log-failed
 ```
-
-On subsequent rounds, only collect comments created after `PUSH_TIME`.
 
 ### 3. Stale detection — critical step
 
@@ -106,12 +98,11 @@ If no files were changed (all comments were stale or won't-fix), skip this step.
 Reply to each **inline** comment classified in step 3:
 
 ```bash
-# Bot inline review comments (use API — no review thread)
-gh api repos/<owner>/<repo>/pulls/<pr>/comments/<comment_id>/replies \
-  -f body="<disposition>"
-
-# Human inline review threads (use gh pr-review extension)
-gh pr-review comments reply --thread-id <thread-id> --body "<disposition>" -R <owner/repo> <pr>
+# Reply to inline review comments (both bot and human)
+gh api repos/<owner>/<repo>/pulls/<pr>/comments \
+  -X POST \
+  -f body="<disposition>" \
+  -F in_reply_to=<comment_id>
 ```
 
 Reply templates (two-level classification for downstream automation):

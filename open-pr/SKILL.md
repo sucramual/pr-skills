@@ -30,6 +30,6 @@ Do the following steps in order:
    ```
    Target the repo's default branch. If a PR already exists for this branch, let me know instead of failing.
 
-7. **Launch background review.** After showing the PR URL to the user, use the Agent tool with `run_in_background: true` to spawn a general-purpose agent that invokes the `review-pr` skill for this PR. The `/review-pr` skill already handles waiting for bot comments, polling, and multi-round review.
+7. **Launch background review** (unless `--no-review` was passed as an argument). After showing the PR URL to the user, use the Agent tool with `run_in_background: true` to spawn a general-purpose agent that invokes the `review-pr` skill for this PR. The `/review-pr` skill already handles waiting for bot comments, polling, and multi-round review. If `--no-review` was passed, skip this step entirely.
 
 If any step (1–6) fails, stop and report the error clearly. Step 7 runs in the background and does not block.

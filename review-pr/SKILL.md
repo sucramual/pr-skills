@@ -93,7 +93,7 @@ git push
 
 If no files were changed (all comments were stale or won't-fix), skip this step.
 
-### 7. Reply to resolved comments
+### 7. Reply to comments and resolve threads
 
 Reply to each **inline** comment classified in step 3:
 
@@ -120,6 +120,23 @@ Use TODO when the issue is real but out of scope for this PR (needs a broader re
 When numbering items, use `1.`, `2.` — never `#1`, `#2` (GitHub auto-links `#N` to issues).
 
 Skip issue-level summary comments (CodeRabbit/Claude bot summaries) — only reply to inline review comments that reference specific code.
+
+**After posting each reply, resolve the GitHub conversation thread when the disposition is terminal.** Replying alone leaves the thread open in the UI; an open thread is the visual signal "the user still owes a decision". Reserve open threads for items that genuinely need human follow-up.
+
+| Disposition | Action | Why |
+|---|---|---|
+| **Fixed** | resolve | work is done; commit speaks for itself |
+| **Stale** | resolve | nothing to do; reply explains why |
+| **Won't fix** | resolve | deliberate decision; reply explains why |
+| **TODO** | leave open | user owes a decision (file follow-up ticket? roll into next PR?) — open thread surfaces it |
+
+Resolve via the included script (idempotent — silently no-ops if already resolved):
+
+```bash
+bash scripts/resolve-thread.sh <owner>/<repo> <pr-number> <comment-id>
+```
+
+The script path is relative to this skill's base directory.
 
 ### 8. Continue or finish
 
